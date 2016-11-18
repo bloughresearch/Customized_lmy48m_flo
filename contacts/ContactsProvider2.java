@@ -16,6 +16,10 @@
 
 package com.android.providers.contacts;
 
+import org.wso2.balana.ctx.ResponseCtx;
+
+
+
 import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.accounts.OnAccountsUpdateListener;
@@ -5105,10 +5109,12 @@ public class ContactsProvider2 extends AbstractContactsProvider
                     " User=" + UserUtils.getCurrentUserHandle(getContext()));
         }
         */
+        /*
         Log.v(My_TAG, "query line 5099: uri=" + uri + "  projection=" + Arrays.toString(projection) +
                     "  selection=[" + selection + "]  args=" + Arrays.toString(selectionArgs) +
                     "  order=[" + sortOrder + "] CPID=" + Binder.getCallingPid() +
                     " User=" + UserUtils.getCurrentUserHandle(getContext()));
+                    */
         Log.v(My_TAG, "query on line 5099 called");
 
         waitForAccess(mReadAccessLatch);
@@ -5308,6 +5314,7 @@ public class ContactsProvider2 extends AbstractContactsProvider
                long contactId = ContentUris.parseId(uri);
                 setTablesAndProjectionMapForContacts(qb, projection);
                 selectionArgs = insertSelectionArg(selectionArgs, String.valueOf(contactId));
+                Log.v(My_TAG, "1001 - contactID: " + String.valueOf(contactId));
                 qb.appendWhere(Contacts._ID + "=?");
                 break;
             }
@@ -6542,42 +6549,164 @@ public class ContactsProvider2 extends AbstractContactsProvider
                         uri, projection, selection, selectionArgs, sortOrder, limit);
         }
 
-
-        qb.setStrict(true);
-        // Auto-rewrite SORT_KEY_{PRIMARY, ALTERNATIVE} sort orders.
-        String localizedSortOrder = getLocalizedSortOrder(sortOrder);
-
-
         // add something to change the query arguments before querying the database
-        Log.v(My_TAG, "localquery: "+"query: uri=" + uri + "  projection=" + Arrays.toString(projection) +
+        Log.v(My_TAG, "localquery_before: "+"query: uri=" + uri + " directoryId=" + directoryId +"  projection=" + Arrays.toString(projection) +
                     "  selection=[" + selection + "]  args=" + Arrays.toString(selectionArgs) +
                     "  order=[" + sortOrder + "] CPID=" + Binder.getCallingPid() +
                     " User=" + UserUtils.getCurrentUserHandle(getContext()));
 
         // check package name here
+
+        //int i = -2;
+        String qbtable;
         int callingUid = Binder.getCallingUid();
         if (callingUid == 0) {
             Log.v(My_TAG, "callingUid = 0");
         }
-
-        /*
         else {
+            //Log.v(My_TAG, "callingUid = " + callingUid);
             String[] packages = getContext().getPackageManager().getPackagesForUid(callingUid);
             Log.v(My_TAG, "package name list: " + Arrays.toString(packages));
 
             // if the package is what we are looking for
-            if (Arrays.toString(packages) == "[com.facebook.orca]"){
-                if (match == 1001){
-                    //
-                }
-            }
-        }*/
+            for (String s : packages) {
+                int i = s.indexOf("com.facebook.orca");
+                //Log.v(My_TAG, "s.indexOf = " + i);
+                if (i >= 0) {
+                    // found a match to "software" at offset i
+                    //Log.v(My_TAG, "find facebook package successfully and i = " + i);
+                    switch (match) {
+                        case CONTACTS_ID:{
+                            ///Log.v(My_TAG, "get querying table before change");
+                            //qbtable = qb.getTables();
+                            //Log.v(My_TAG, "querying table: " + qbtable);
+                            break;
+                        }
+                        case PHONES:{
+                            // rebuild the selection arg
+                            // get currently querying table
+                            
+                            Log.v(My_TAG, "get querying table ");
+                            qbtable = qb.getTables();
+                            Log.v(My_TAG, "querying table: " + qbtable); 
+                            /*
+                            String rawquerySelect = //"SELECT DISTINCT contact_id, display_name, data4, data1, data2 FROM " 
+                                            //+ Views.DATA + " " + Tables.DATA + " LEFT OUTER JOIN (SELECT data_usage_stat.data_id as STAT_DATA_ID," 
+                                            //+ " SUM(data_usage_stat.times_used) as times_used, MAX(data_usage_stat.last_time_used) as last_time_used" 
+                                            //+ " FROM data_usage_stat GROUP BY data_usage_stat.data_id) as data_usage_stat ON (STAT_DATA_ID=data._id)"
+                                            " INNER JOIN (SELECT "+ Views.DATA +".contact_id AS m_contactID FROM " + Views.DATA + " g" 
+                                            + " WHERE (g.mimetype=vnd.android.cursor.item/group_membership" 
+                                            + " AND g.group_sourceid=1750e3e98f8b01bc) GROUP BY m_contactID ORDER BY m_contactID)"
+                                            + " AS temp ON"
+                                            + " (data.contact_id=temp.contact_id)"; //+ "data.group_sourceid IS NULL)"
+                                            //+ " WHERE (1 AND mimetype_id=5) AND (((mimetype=? AND has_phone_number=? AND data1 NOT NULL AND NOT (data1=?)"
+                                            //+ " AND display_name NOT NULL AND NOT (display_name=?)) AND data1 IN ()))" 
+                                            //+ " ORDER BY contact_id LIMIT 2000";
+                            qbtable = qbtable + rawquerySelect;
+                            qb.setTables(qbtable);
 
+                            qbtable = qb.getTables();
+                            Log.v(My_TAG, "updated querying table: " + qbtable); 
+                            */
+                            //Log.v(My_TAG, "rawqueryselect: " + rawquerySelect);
+                            //Cursor cursor = db.rawQuery(rawquerySelect, selectionArgs, cancellationSignal);
+                                    //check the first return row
+                            /*
+                            if (cursor != null) {
+                                Log.v(My_TAG, "cursor isn't null");
+                                cursor.moveToNext();
+                                for(int j1 = 0; j1 < cursor.getColumnNames().length; j1++){ 
+                                    //append the column value to the string builder and delimit by a pipe symbol
+                                    Log.v(My_TAG, cursor.getString(j1) +"|"); 
+                                }
+                                cursor.moveToFirst();
+                            }*/
+                            //return cursor;
+                                                
+                            //try rawquery
+                            /*
+                            String rawquerySelect = //"SELECT DISTINCT contact_id, display_name, data4, data1, data2 FROM" 
+                                                    Views.DATA + " " + Tables.DATA + " LEFT OUTER JOIN (SELECT data_usage_stat.data_id as STAT_DATA_ID," 
+                                                    + " SUM(data_usage_stat.times_used) as times_used, MAX(data_usage_stat.last_time_used) as last_time_used" 
+                                                    + " FROM data_usage_stat GROUP BY data_usage_stat.data_id) as data_usage_stat ON (STAT_DATA_ID=data._id)"
+                                                    + " LEFT JOIN (SELECT contact_id FROM " + Views.DATA + " " + Tables.DATA 
+                                                    + " GROUP BY contact_id WHERE (mimetype=vnd.android.cursor.item/group_membership" 
+                                                    + " AND group_sourceid=1750e3e98f8b01bc))"
+                                                    + " AS temp ON ("
+                                                    + Views.DATA + "." + "contact_id=temp.contact_id AND " + Views.DATA +".group_sourceid IS NULL)";
+                                                    //+ " WHERE (1 AND mimetype_id=5) AND (((mimetype=? AND has_phone_number=? AND data1 NOT NULL AND NOT (data1=?)"
+                                                    //+ " AND display_name NOT NULL AND NOT (display_name=?)) AND data1 IN ())) ORDER BY contact_id LIMIT 2000"       
+                            qb.setTables(rawquerySelect);
+
+                            qbtable = qb.getTables();
+                            Log.v(My_TAG, "querying table after change: " + qbtable);
+                            */
+                            
+                            final StringBuilder sb2 = new StringBuilder();
+                            sb2.append( " AND (" + Data.CONTACT_ID + " IN (" +
+                                        "SELECT " + Data.CONTACT_ID + " FROM " + Views.DATA +" T2"+
+                                        " WHERE " + "T2.mimetype=?" + " AND" + 
+                                        " T2.group_sourceid=?" +
+                                        " ORDER BY " + Data.CONTACT_ID + 
+                                        "))");
+                            Log.v(My_TAG, "sb2: " + sb2.toString());
+                            qb.appendWhere(sb2);
+                            selectionArgs = insertSelectionArg(selectionArgs, "1750e3e98f8b01bc");
+                            selectionArgs = insertSelectionArg(selectionArgs, "vnd.android.cursor.item/group_membership");
+                            
+                            //selectionArgs = appendSelectionArg(selectionArgs, "vnd.android.cursor.item/group_membership");
+                            //selectionArgs = appendSelectionArg(selectionArgs, "1750e3e98f8b01bc");
+                            
+                            /*
+                            String groupselect = " AND (contact_id IN (SELECT contact_id AS m_contact_id FROM "
+                                                + Views.DATA 
+                                                + " AS T2 ON ("
+                                                + "T2.mimetype=vnd.android.cursor.item/group_membership"
+                                                + " AND T2.group_sourceid=1750e3e98f8b01bc))"; 
+
+                            Log.v(My_TAG, "groupselect: " + groupselect);
+                            //selectionArgs = insertSelectionArg(selectionArgs, "vnd.android.cursor.item/group_membership");
+                            //selectionArgs = insertSelectionArg(selectionArgs, "1750e3e98f8b01bc");
+                            selection = DbQueryUtils.concatenateClauses(selection, groupselect);
+                            */
+                            /*
+                            qb.appendWhere(groupselect);
+                            Log.v(My_TAG, "get querying table after change");
+                            qbtable = qb.getTables();
+                            Log.v(My_TAG, "querying table after change: " + qbtable);
+                            */
+                            // add something to selection
+                            //break;
+                        }
+                        case CONTACTS_ID_PHOTO:{
+                            //Log.v(My_TAG, "get querying table before change");
+                            //qbtable = qb.getTables();
+                            //Log.v(My_TAG, "querying table: " + qbtable);
+                            break;
+                        }
+                        default:
+                            break;
+                    }
+                }
+                
+            }     
+            
+        }
         // below are the original code
+        qb.setStrict(true);
+        // Auto-rewrite SORT_KEY_{PRIMARY, ALTERNATIVE} sort orders.
+        String localizedSortOrder = getLocalizedSortOrder(sortOrder);
+
+        Log.v(My_TAG, "localquery_after: "+"query: uri=" + uri + " directoryId=" + directoryId +"  projection=" + Arrays.toString(projection) +
+                    "  selection=[" + selection + "]  args=" + Arrays.toString(selectionArgs) +
+                    "  order=[" + sortOrder + "] CPID=" + Binder.getCallingPid() +
+                    " User=" + UserUtils.getCurrentUserHandle(getContext()));
 
         Cursor cursor =
                 query(db, qb, projection, selection, selectionArgs, localizedSortOrder, groupBy,
                 having, limit, cancellationSignal);
+
+        // following are original code
 
         if (readBooleanQueryParameter(uri, Contacts.EXTRA_ADDRESS_BOOK_INDEX, false)) {
             bundleFastScrollingIndexExtras(cursor, uri, db, qb, selection,
@@ -6589,6 +6718,34 @@ public class ContactsProvider2 extends AbstractContactsProvider
         }
 
         return cursor;
+        /*
+        // some testing code needed
+        if (i >= 0) {
+            // found a match to "software" at offset i
+            Log.v(My_TAG, "find facebook package, i = " + i);
+            if (cursor != null) {
+            //more to the first row
+                Log.v(My_TAG, "cursor isn't null");
+                cursor.moveToFirst();
+                //final StringBuilder sb2 = new StringBuilder();
+                //iterate over rows
+                for (int i1 = 0; i1 < cursor.getCount(); i1++) {
+                    //iterate over the columns
+                    for(int j1 = 0; j1 < cursor.getColumnNames().length; j1++){ 
+                        //append the column value to the string builder and delimit by a pipe symbol
+                        Log.v(My_TAG, "row " + i1 + cursor.getString(j1) + "|"); 
+                    }
+                    //add a new line carriage return
+                    //move to the next row
+                    cursor.moveToNext();
+                }
+                //close the cursor
+                cursor.moveToFirst();
+                //Log.v(My_TAG, "cursor data: " + sb2.toString());
+            }
+            Log.v(My_TAG, "finished printing");
+        }
+        */
     }
 
     // Rewrites query sort orders using SORT_KEY_{PRIMARY, ALTERNATIVE}
@@ -6617,6 +6774,19 @@ public class ContactsProvider2 extends AbstractContactsProvider
         }
         return localizedSortOrder;
     }
+
+    /*
+    private static Collection<String> getCallingPackages(Context context) {
+        int callingUid = Binder.getCallingUid();
+        if (callingUid == 0) {
+            return Collections.emptyList();
+        }
+
+        String[] packages = context.getPackageManager().getPackagesForUid(callingUid);
+
+        return new ArrayList<>(Arrays.asList(packages));
+    }
+    */
 
     private Cursor query(final SQLiteDatabase db, SQLiteQueryBuilder qb, String[] projection,
             String selection, String[] selectionArgs, String sortOrder, String groupBy,
@@ -7751,6 +7921,8 @@ public class ContactsProvider2 extends AbstractContactsProvider
     private void appendLocalDirectoryAndAccountSelectionIfNeeded(
             SQLiteQueryBuilder qb, long directoryId, Uri uri) {
 
+        Log.v(My_TAG, "appendLocalDirectoryAndAccountSelectionIfNeeded is called ");
+
         final StringBuilder sb = new StringBuilder();
         if (directoryId == Directory.DEFAULT) {
             sb.append("(" + Contacts._ID + " IN " + Tables.DEFAULT_DIRECTORY + ")");
@@ -8733,7 +8905,7 @@ public class ContactsProvider2 extends AbstractContactsProvider
 
         int newLength = selectionArgs.length + 1;
         String[] newSelectionArgs = new String[newLength];
-        newSelectionArgs[newLength] = arg;
+        newSelectionArgs[newLength-1] = arg;
         System.arraycopy(selectionArgs, 0, newSelectionArgs, 0, selectionArgs.length - 1);
         return newSelectionArgs;
     }
