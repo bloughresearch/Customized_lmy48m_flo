@@ -16,9 +16,21 @@
 
 package com.android.providers.contacts;
 
+//import org.wso2.balana.ctx.ResponseCtx;
+import java.util.Vector;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import gt.research.mht.MHTNode;
+import gt.research.xacml.PDP_LIB;
+import gt.research.xacml.test.XacmlTest;
+import org.apache.commons.io.IOUtils;
+import org.wso2.balana.ParsingException;
+import org.wso2.balana.ctx.AbstractResult;
 import org.wso2.balana.ctx.ResponseCtx;
-
-
+// the class for parsing the xml policy file
+import com.android.providers.contacts.util.PolicyRequestInterface;
 
 import android.accounts.Account;
 import android.accounts.AccountManager;
@@ -1396,6 +1408,9 @@ public class ContactsProvider2 extends AbstractContactsProvider
      */
     private HashMap<String, ArrayList<GroupIdCacheEntry>> mGroupIdCache = Maps.newHashMap();
 
+    // map for contact reading policy
+    private HashMap<String, Boolean> mContactsPermissions;
+
     /**
      * Sub-provider for handling profile requests against the profile database.
      */
@@ -1462,6 +1477,13 @@ public class ContactsProvider2 extends AbstractContactsProvider
         super.onCreate();
         setAppOps(AppOpsManager.OP_READ_CONTACTS, AppOpsManager.OP_WRITE_CONTACTS);
         try {
+
+            // initialize the hashmap of mContactsPermissions
+            Log.v(My_TAG, "check whether the mContactsPermissions is empty");
+            mContactsPermissions = initialize_policy();
+            boolean val = mContactsPermissions.isEmpty();
+            Log.v(My_TAG, "mContactsPermissions is empty: " + Boolean.toString(val));
+
             return initialize();
         } catch (RuntimeException e) {
             Log.e(TAG, "Cannot start provider", e);
@@ -1538,6 +1560,11 @@ public class ContactsProvider2 extends AbstractContactsProvider
         scheduleBackgroundTask(BACKGROUND_TASK_OPEN_WRITE_ACCESS);
         scheduleBackgroundTask(BACKGROUND_TASK_CLEANUP_PHOTOS);
         scheduleBackgroundTask(BACKGROUND_TASK_CLEAN_DELETE_LOG);
+
+        // initialize the hashmap of mContactsPermissions
+        //mContactsPermissions = initialize_policy();
+        //boolean val = mContactsPermissions.isEmpty();
+        //Log.v(My_TAG, "group_policies is empty: " + Boolean.toString(val));
 
         return true;
     }
@@ -6747,6 +6774,105 @@ public class ContactsProvider2 extends AbstractContactsProvider
         }
         */
     }
+
+    // new functions added
+
+    private String convertStreamToString(InputStream is) {
+        try {
+            return new java.util.Scanner(is).useDelimiter("\\A").next();
+        } catch (java.util.NoSuchElementException e) {
+            return "";
+        }
+    }
+
+    
+    private File convertIsToFis (String file_name, InputStream is){
+
+        //FileOutputStream thestream_out = new FileOutputStream(new File(getContext().getFilesDir(), "App_Policy.xml"));
+        //IOUtils.copy(thestream, thestream_out);
+        //thestream.close();
+        //thestream_out.close();
+        
+        try {
+
+            File policy = new File(getContext().getFilesDir(), file_name);
+            FileOutputStream fis_out = new FileOutputStream(policy);
+            IOUtils.copy(is, fis_out);
+            is.close();
+            fis_out.close();
+            return policy;
+        } catch (IOException e){
+            Log.e(My_TAG, Log.getStackTraceString(e));
+            return null;
+        } 
+        
+    }
+    
+    public HashMap<String, Boolean> initialize_policy() {
+        //RequestInterface(File policyFile, File certFile)
+
+        String[] apps = {"whatsapp", "facebook", "snapchat"};
+        HashMap<String, String> pkgMap = new HashMap<String, String>();
+        loadPkgMap(pkgMap);
+
+        /*
+        for (String key: pkgMap.keySet()) {
+            //System.out.println(key + "->" + pkgMap.get(key));
+            Log.v(My_TAG, key + "->" + pkgMap.get(key));
+        }*/
+
+        HashMap<String, PolicyRequestInterface> parsers = new HashMap<>();
+
+        InputStream thestream = getContext().getResources().openRawResource(R.raw.apppolicy);
+        InputStream thestream2 = getContext().getResources().openRawResource(R.raw.whatsapp);
+        
+        File app_policy = convertIsToFis("App_Policy.xml", thestream);
+        File whatsapp_policy = convertIsToFis("whatsapp.xml", thestream2);
+        // store the read in into to a file in internal storage
+
+
+        //Log.e(My_TAG, ">>>>>PRINTING<<<<<");
+        //Log.e(My_TAG, thestream.toString());
+        //Log.e(My_TAG, convertStreamToString(thestream));
+        PolicyRequestInterface test = new PolicyRequestInterface(app_policy, whatsapp_policy);
+        parsers.put("whatsapp", test);
+
+        //thestream = getContext().getResources().openRawResource(R.raw.apppolicy);
+        thestream2 = getContext().getResources().openRawResource(R.raw.facebook);
+        File facebook_policy = convertIsToFis("facebook.xml", thestream2);
+        test = new PolicyRequestInterface(app_policy, facebook_policy);
+        parsers.put("facebook", test);
+
+        //thestream = getContext().getResources().openRawResource(R.raw.apppolicy);
+        thestream2 = getContext().getResources().openRawResource(R.raw.snapchat);
+        File snapchat_policy = convertIsToFis("snapchat.xml", thestream2);
+        test = new PolicyRequestInterface(app_policy, snapchat_policy);
+        parsers.put("snapchat", test);
+
+
+        String[] groups = {"Friend", "Family", "Colleague", "School", "Work", "Alumni",
+                "Supervisor", "Medical", "Sales", "Repair", "Professor", "None"};
+
+        HashMap<String, Boolean> permissions = new HashMap<>();
+        for (String app: apps) {
+            for (String tag: groups) {
+                boolean perm = parsers.get(app).requestAccess(app, tag);
+                //System.out.println(app + ":" + tag + "=" + perm);
+                permissions.put(app + ":" + tag, perm);
+                Log.v(My_TAG, app + ":" + tag + " perm: " + Boolean.toString(perm));
+            }
+        }
+        return permissions;
+        
+    }
+
+    public void loadPkgMap(HashMap<String, String> map) {
+            map.put("facebook", "com.facebook");
+            map.put("snapchat", "com.snapchat");
+            map.put("whatsapp", "com.whatsapp");
+    }
+
+
 
     // Rewrites query sort orders using SORT_KEY_{PRIMARY, ALTERNATIVE}
     // to use PHONEBOOK_BUCKET_{PRIMARY, ALTERNATIVE} as primary key; all
