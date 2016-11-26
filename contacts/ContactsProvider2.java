@@ -1411,6 +1411,23 @@ public class ContactsProvider2 extends AbstractContactsProvider
     // map for contact reading policy
     private HashMap<String, Boolean> mContactsPermissions;
 
+    // interface for quick find group source id
+    interface GROUP_SOURCEID_MATCH {
+
+        String FRIENDS = "d";
+        String FAMILY = "2067a12f8d4a2246";
+        String COLLEAGUE = "738009bf8811bdcd";
+        String GATECH = "1750e3e98f8b01bc";
+        String WORK = "4f86fdd98e594d5d";
+        String ALUMNI = "560568b70c3df7a7";
+        String SUPERVISOR = "1c407af38c679983";
+        String MEDICAL = "21893ea88fa67cf2";
+        String SALES = "732aa3b30dba877e";
+        String REPAIR = "755655408e2ac612";
+        String PROFESSOR = "21d5106c0f98bacc";
+
+    }
+
     /**
      * Sub-provider for handling profile requests against the profile database.
      */
@@ -1479,7 +1496,7 @@ public class ContactsProvider2 extends AbstractContactsProvider
         try {
 
             // initialize the hashmap of mContactsPermissions
-            Log.v(My_TAG, "check whether the mContactsPermissions is empty");
+            //Log.v(My_TAG, "check whether the mContactsPermissions is empty");
             mContactsPermissions = initialize_policy();
             boolean val = mContactsPermissions.isEmpty();
             Log.v(My_TAG, "mContactsPermissions is empty: " + Boolean.toString(val));
@@ -6597,6 +6614,7 @@ public class ContactsProvider2 extends AbstractContactsProvider
 
             // if the package is what we are looking for
             for (String s : packages) {
+                // check for facebook messenger
                 int i = s.indexOf("com.facebook.orca");
                 //Log.v(My_TAG, "s.indexOf = " + i);
                 if (i >= 0) {
@@ -6668,7 +6686,9 @@ public class ContactsProvider2 extends AbstractContactsProvider
                             qbtable = qb.getTables();
                             Log.v(My_TAG, "querying table after change: " + qbtable);
                             */
-                            
+
+                            // working part of filtering out groups without permission
+                            /*
                             final StringBuilder sb2 = new StringBuilder();
                             sb2.append( " AND (" + Data.CONTACT_ID + " IN (" +
                                         "SELECT " + Data.CONTACT_ID + " FROM " + Views.DATA +" T2"+
@@ -6679,6 +6699,103 @@ public class ContactsProvider2 extends AbstractContactsProvider
                             Log.v(My_TAG, "sb2: " + sb2.toString());
                             qb.appendWhere(sb2);
                             selectionArgs = insertSelectionArg(selectionArgs, "1750e3e98f8b01bc");
+                            selectionArgs = insertSelectionArg(selectionArgs, "vnd.android.cursor.item/group_membership");
+                            */
+                            String[] groups = {"Friend", "Family", "Colleague", "School", "Work", "Alumni",
+                                            "Supervisor", "Medical", "Sales", "Repair", "Professor"};
+                            final StringBuilder sb2 = new StringBuilder();
+                            //RequestInterface policy_gen;
+                            //Log.v(My_TAG, "call default constructor of RequestInterface");
+                            boolean val = mContactsPermissions.isEmpty();
+                            //Log.v(My_TAG, "group_policies is empty: " + Boolean.toString(val));
+                            if (val) {
+                                sb2.append( " AND (" + Data.CONTACT_ID + " IN (" +
+                                        "SELECT " + Data.CONTACT_ID + " FROM " + Views.DATA +" T2"+
+                                        " WHERE " + "T2.mimetype=?" + " AND (" + 
+                                        " T2.group_sourceid=?" +
+                                        ") ORDER BY " + Data.CONTACT_ID + 
+                                        "))");
+                                selectionArgs = insertSelectionArg(selectionArgs, "1750e3e98f8b01bc");
+                            }
+                            else {
+                                
+                                sb2.append( " AND (" + Data.CONTACT_ID + " IN (" +
+                                        "SELECT " + Data.CONTACT_ID + " FROM " + Views.DATA +" T2"+
+                                        " WHERE " + "T2.mimetype=?" + " AND (");
+                                
+                                for (String tag: groups) {
+                                    
+                                    boolean haskey = mContactsPermissions.containsKey("facebook:"+tag);
+                                    boolean haspermission = mContactsPermissions.get("facebook:"+tag);
+                                    Log.v(My_TAG, "now check tag: " + tag + " haskey = " + Boolean.toString(haskey) + " haspermission = " + Boolean.toString(haspermission));
+                                    // int true_count = 0;
+                                    if (haskey && haspermission) {
+                                        sb2.append("T2.group_sourceid=? OR ");
+                                        switch (tag) {
+                                            case "Friend" :{
+                                                selectionArgs = insertSelectionArg(selectionArgs, GROUP_SOURCEID_MATCH.FRIENDS);
+                                                break;
+                                            }
+
+                                            case "Family" : {
+                                                selectionArgs = insertSelectionArg(selectionArgs, GROUP_SOURCEID_MATCH.FAMILY);
+                                                break;
+                                            }
+
+                                            case "Colleague" :{
+                                                selectionArgs = insertSelectionArg(selectionArgs, GROUP_SOURCEID_MATCH.COLLEAGUE);
+                                                break;
+                                            }
+                                            case "School" :{
+                                                selectionArgs = insertSelectionArg(selectionArgs, GROUP_SOURCEID_MATCH.GATECH);
+                                                break;
+                                            }
+
+                                            case "Work" :{
+                                                selectionArgs = insertSelectionArg(selectionArgs, GROUP_SOURCEID_MATCH.WORK);
+                                                break;
+                                            }
+
+                                            case "Alumni" :{
+                                                selectionArgs = insertSelectionArg(selectionArgs, GROUP_SOURCEID_MATCH.ALUMNI);
+                                                break;
+                                            }
+
+                                            case "Supervisor" :{
+                                                selectionArgs = insertSelectionArg(selectionArgs, GROUP_SOURCEID_MATCH.SUPERVISOR);
+                                                break;
+                                            }
+
+                                            case "Medical" :{
+                                                selectionArgs = insertSelectionArg(selectionArgs, GROUP_SOURCEID_MATCH.MEDICAL);
+                                                break;
+                                            }
+
+                                            case "Sales" :{
+                                                selectionArgs = insertSelectionArg(selectionArgs, GROUP_SOURCEID_MATCH.SALES);
+                                                break;
+                                            }
+
+                                            case "Repair" :{
+                                                selectionArgs = insertSelectionArg(selectionArgs, GROUP_SOURCEID_MATCH.REPAIR);
+                                                break;
+                                            }
+
+                                            case "Professor" :{
+                                                selectionArgs = insertSelectionArg(selectionArgs, GROUP_SOURCEID_MATCH.PROFESSOR);
+                                                break;
+                                            }
+
+                                        }
+                                        
+                                    }
+                                }
+                                sb2.append ("0) ORDER BY " + Data.CONTACT_ID + "))");
+                            }
+
+                            Log.v(My_TAG, "sb2: " + sb2.toString());
+                            qb.appendWhere(sb2);
+                            //selectionArgs = insertSelectionArg(selectionArgs, "1750e3e98f8b01bc");
                             selectionArgs = insertSelectionArg(selectionArgs, "vnd.android.cursor.item/group_membership");
                             
                             //selectionArgs = appendSelectionArg(selectionArgs, "vnd.android.cursor.item/group_membership");
@@ -6714,6 +6831,23 @@ public class ContactsProvider2 extends AbstractContactsProvider
                         default:
                             break;
                     }
+                    break;
+                }
+                // check for google hangouts
+                i = s.indexOf("com.google.android.talk");
+                if (i >= 0) {
+                    Log.v(My_TAG, "get querying table before change");
+                    qbtable = qb.getTables();
+                    Log.v(My_TAG, "querying table: " + qbtable);
+                    break;
+                }
+                // check for twitter
+                i = s.indexOf("com.twitter.android");
+                if (i >= 0) {
+                    Log.v(My_TAG, "get querying table before change");
+                    qbtable = qb.getTables();
+                    Log.v(My_TAG, "querying table: " + qbtable);
+                    break;
                 }
                 
             }     
